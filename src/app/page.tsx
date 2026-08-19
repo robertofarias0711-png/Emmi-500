@@ -30,6 +30,7 @@ export default function Home() {
   const [aspectRatio, setAspectRatio] = useState('1:1');
   const [style, setStyle] = useState('');
   const [loading, setLoading] = useState(false);
+  const [downloading, setDownloading] = useState(false);
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -67,6 +68,43 @@ export default function Home() {
   const handleSurpriseMe = () => {
     const randomPrompt = examplePrompts[Math.floor(Math.random() * examplePrompts.length)];
     setPrompt(randomPrompt);
+  };
+
+  const handleDownload = async () => {
+    if (!generatedImage) return;
+    setDownloading(true);
+
+    try {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.src = generatedImage;
+
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0);
+          const dataUrl = canvas.toDataURL('image/png');
+          const link = document.createElement('a');
+          link.href = dataUrl;
+          link.download = `emmi500-${Date.now()}.png`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        }
+        setDownloading(false);
+      };
+
+      img.onerror = () => {
+        window.open(generatedImage, '_blank');
+        setDownloading(false);
+      };
+    } catch {
+      window.open(generatedImage, '_blank');
+      setDownloading(false);
+    }
   };
 
   return (
@@ -196,12 +234,13 @@ export default function Home() {
                   className="max-w-full h-auto object-contain rounded-lg"
                 />
               </div>
-              <a 
-                href={`/api/download?url=${encodeURIComponent(generatedImage)}`}
-                className="mt-2 px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-sm font-semibold text-white transition-colors flex items-center gap-2"
+              <button 
+                onClick={handleDownload}
+                disabled={downloading}
+                className="mt-2 px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-sm font-semibold text-white transition-colors flex items-center gap-2 disabled:bg-gray-700"
               >
-                ⬇️ Descargar Imagen
-              </a>
+                {downloading ? 'Descargando...' : '⬇️ Descargar Imagen'}
+              </button>
             </div>
           )}
         </section>
