@@ -1,10 +1,15 @@
 import { NextResponse } from 'next/server';
 import Replicate from 'replicate';
+import OpenAI from 'openai';
 
 export const dynamic = 'force-dynamic';
 
 const replicate = new Replicate({
   auth: process.env.REPLICATE_API_TOKEN,
+});
+
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
 });
 
 export async function POST(request: Request) {
@@ -17,43 +22,38 @@ export async function POST(request: Request) {
 
     const ratioToUse = aspect_ratio || "1:1";
 
-    // 1. Expansión semántica estricta mediante Llama 3
-    let finalPrompt = '';
+    // 1. GPT-4o-mini traduce, interpreta emociones y detalla la raza exacta
+    let finalPrompt = prompt;
     try {
-      const systemInstruction = `You are a cinematic prompt engineer for FLUX AI. 
-Transform the user's input into a precise, highly realistic English image generation prompt.
-- Preserve exact dog breeds (e.g., Pekingese = small, flat-faced, long-haired Pekingese dog).
-- Capture human emotions deeply (grief, tears, sorrow, heartbreak).
-- Describe lighting, scene, and composition.
-- OUTPUT ONLY THE FINAL ENGLISH PROMPT. DO NOT USE QUOTES OR INTRODUCTORY TEXT.`;
-
-      const textOutput: any = await replicate.run(
-        "meta/meta-llama-3-8b-instruct",
-        {
-          input: {
-            prompt: `${systemInstruction}\n\nUser Input: "${prompt}"\n\nEnhanced Prompt:`,
-            max_new_tokens: 200,
-            temperature: 0.3
+      const gptResponse = await openai.chat.completions.create({
+        model: 'gpt-4o-mini',
+        messages: [
+          {
+            role: 'system',
+            content: `You are a world-class prompt engineer for AI image generators (FLUX Dev / DALL-E 3).
+Transform the user's short input into an explicit, highly detailed English prompt.
+RULES:
+1. Translate accurately from Spanish to English.
+2. Respect exact animal breeds (e.g., Pekingese must explicitly be described as a small fluffy Pekingese dog with flat face).
+3. Capture exact emotional tone (grief, agony, heartbreak, or transformation) without causing anatomical glitches.
+4. Output ONLY the final English prompt. No conversational text.`
+          },
+          {
+            role: 'user',
+            content: prompt
           }
-        }
-      );
+        ],
+        temperature: 0.4,
+      });
 
-      if (textOutput) {
-        finalPrompt = Array.isArray(textOutput) ? textOutput.join("").trim() : String(textOutput).trim();
+      if (gptResponse.choices[0]?.message?.content) {
+        finalPrompt = gptResponse.choices[0].message.content.trim();
       }
     } catch (e) {
-      console.warn("Error en expansor Llama, usando fallback directo:", e);
+      console.warn("Falló GPT, usando fallback:", e);
     }
 
-    // Fallback de respaldo si el expansor no responde
-    if (!finalPrompt) {
-      finalPrompt = `Heartbreaking photo of a man weeping in deep sorrow over his small long-haired Pekingese dog, emotional face, tears, cinematic lighting, 8k resolution`;
-    }
-
-    // Limpieza de caracteres extra
-    finalPrompt = finalPrompt.replace(/^["']|["']$/g, '').trim();
-
-    // 2. Renderizado con FLUX Dev
+    // 2. Renderizado en FLUX Dev
     const output: any = await replicate.run(
       "black-forest-labs/flux-dev",
       {
@@ -71,10 +71,10 @@ Transform the user's input into a precise, highly realistic English image genera
     const imageUrl = Array.isArray(output) ? output[0] : output;
 
     if (!imageUrl) {
-      throw new Error("No se pudo obtener la imagen desde Replicate");
+      throw new Error("No se pudo obtener la imagen");
     }
 
-    // 3. Conversión a Base64 para garantizar la descarga local
+    // 3. Conversión a Base64 para descarga local directa
     const imageResponse = await fetch(imageUrl);
     const arrayBuffer = await imageResponse.arrayBuffer();
     const base64Image = Buffer.from(arrayBuffer).toString('base64');
@@ -83,7 +83,7 @@ Transform the user's input into a precise, highly realistic English image genera
     return NextResponse.json({ output: [dataUrl] });
 
   } catch (error: any) {
-    console.error("Error en API de Replicate:", error);
+    console.error("Error en la API:", error);
     return NextResponse.json(
       { error: error.message || 'Error al procesar la imagen' },
       { status: 500 }
