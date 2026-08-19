@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import Image from 'next/image';
+
 
 const aspectRatios = [
   { name: 'Cuadrado (1:1)', value: '1:1', icon: '⏹️' },
@@ -193,13 +193,10 @@ export default function Home() {
                 ✨ Tu Creación está lista:
               </h2>
               <div className="relative rounded-xl overflow-hidden border-4 border-gray-800 shadow-2xl bg-black flex items-center justify-center">
-                <Image
-                  src={generatedImage}
-                  alt={prompt}
-                  width={1024}
-                  height={1024}
-                  className="max-w-full h-auto object-contain"
-                  priority
+                <<img
+                     src={generatedImage}
+                     alt={prompt}
+                     className="max-w-full h-auto object-contain rounded-lg"
                 />
               </div>
               <a 
