@@ -17,38 +17,48 @@ export async function POST(request: Request) {
 
     const ratioToUse = aspect_ratio || "1:1";
 
-    // 1. Llama 3 enriquece el prompt con semántica y precisión narrativa
-    let expandedPrompt = prompt;
+    // 1. Expansión semántica estricta mediante Llama 3
+    let finalPrompt = '';
     try {
+      const systemInstruction = `You are a cinematic prompt engineer for FLUX AI. 
+Transform the user's input into a precise, highly realistic English image generation prompt.
+- Preserve exact dog breeds (e.g., Pekingese = small, flat-faced, long-haired Pekingese dog).
+- Capture human emotions deeply (grief, tears, sorrow, heartbreak).
+- Describe lighting, scene, and composition.
+- OUTPUT ONLY THE FINAL ENGLISH PROMPT. DO NOT USE QUOTES OR INTRODUCTORY TEXT.`;
+
       const textOutput: any = await replicate.run(
         "meta/meta-llama-3-8b-instruct",
         {
           input: {
-            prompt: `You are an expert prompt engineer for AI image generators.
-Convert this user request into a deep, highly accurate English image generation prompt.
-Capture exact dog breeds (e.g. Pekingese), genuine human grief/tragedy, exact atmosphere, and fine details.
-Output ONLY the expanded English prompt.
-
-User Request: "${prompt}"`,
-            max_new_tokens: 150
+            prompt: `${systemInstruction}\n\nUser Input: "${prompt}"\n\nEnhanced Prompt:`,
+            max_new_tokens: 200,
+            temperature: 0.3
           }
         }
       );
-      
+
       if (textOutput) {
-        expandedPrompt = Array.isArray(textOutput) ? textOutput.join("").trim() : String(textOutput).trim();
+        finalPrompt = Array.isArray(textOutput) ? textOutput.join("").trim() : String(textOutput).trim();
       }
     } catch (e) {
-      console.warn("Fallback prompt enhancer:", e);
-      expandedPrompt = `Heartbreaking photo of a man weeping in sorrow over the death of his small fluffy Pekingese dog, cinematic emotional lighting, high fidelity, 8k`;
+      console.warn("Error en expansor Llama, usando fallback directo:", e);
     }
 
-    // 2. Usar FLUX Dev para semántica avanzada y fidelidad superior
+    // Fallback de respaldo si el expansor no responde
+    if (!finalPrompt) {
+      finalPrompt = `Heartbreaking photo of a man weeping in deep sorrow over his small long-haired Pekingese dog, emotional face, tears, cinematic lighting, 8k resolution`;
+    }
+
+    // Limpieza de caracteres extra
+    finalPrompt = finalPrompt.replace(/^["']|["']$/g, '').trim();
+
+    // 2. Renderizado con FLUX Dev
     const output: any = await replicate.run(
       "black-forest-labs/flux-dev",
       {
         input: {
-          prompt: expandedPrompt,
+          prompt: finalPrompt,
           num_outputs: 1,
           aspect_ratio: ratioToUse,
           output_format: "webp",
@@ -61,10 +71,10 @@ User Request: "${prompt}"`,
     const imageUrl = Array.isArray(output) ? output[0] : output;
 
     if (!imageUrl) {
-      throw new Error("No se obtuvo imagen desde Replicate");
+      throw new Error("No se pudo obtener la imagen desde Replicate");
     }
 
-    // 3. Convertir a Base64 para descarga local directa
+    // 3. Conversión a Base64 para garantizar la descarga local
     const imageResponse = await fetch(imageUrl);
     const arrayBuffer = await imageResponse.arrayBuffer();
     const base64Image = Buffer.from(arrayBuffer).toString('base64');
@@ -73,7 +83,7 @@ User Request: "${prompt}"`,
     return NextResponse.json({ output: [dataUrl] });
 
   } catch (error: any) {
-    console.error("Error en Replicate API:", error);
+    console.error("Error en API de Replicate:", error);
     return NextResponse.json(
       { error: error.message || 'Error al procesar la imagen' },
       { status: 500 }
