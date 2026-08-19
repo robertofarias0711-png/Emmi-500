@@ -69,24 +69,6 @@ export default function Home() {
     setPrompt(randomPrompt);
   };
 
-  const handleDownload = async () => {
-    if (!generatedImage) return;
-    try {
-      const response = await fetch(generatedImage);
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `emmi500-${Date.now()}.webp`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
-    } catch (err) {
-      window.open(generatedImage, '_blank');
-    }
-  };
-
   return (
     <main className="flex min-h-screen flex-col items-center p-6 md:p-12 bg-gray-950 text-white">
       {/* Header */}
@@ -214,12 +196,12 @@ export default function Home() {
                   className="max-w-full h-auto object-contain rounded-lg"
                 />
               </div>
-              <button 
-                onClick={handleDownload}
+              <a 
+                href={`/api/download?url=${encodeURIComponent(generatedImage)}`}
                 className="mt-2 px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-sm font-semibold text-white transition-colors flex items-center gap-2"
               >
                 ⬇️ Descargar Imagen
-              </button>
+              </a>
             </div>
           )}
         </section>
@@ -231,4 +213,4 @@ export default function Home() {
       </footer>
     </main>
   );
-} 
+}
