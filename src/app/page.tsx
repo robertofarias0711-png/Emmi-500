@@ -1,37 +1,64 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
+
+const aspectRatios = [
+  { name: 'Cuadrado (1:1)', value: '1:1', icon: '⏹️' },
+  { name: 'Vertical (9:16)', value: '9:16', icon: '📱' },
+  { name: 'Horizontal (16:9)', value: '16:9', icon: '📺' },
+];
+
+const styles = [
+  { name: 'Predeterminado', value: '' },
+  { name: 'Fotorrealismo', value: ', photorealistic, 8k, highly detailed, cinematic lighting' },
+  { name: 'Anime', value: ', anime style, vibrant colors, detailed line art, studio ghibli style' },
+  { name: 'Arte Digital', value: ', digital art, concept art, trend on artstation, sharp focus' },
+  { name: 'Cyberpunk', value: ', cyberpunk style, neon lights, futuristic city, dark atmosphere' },
+  { name: 'Van Gogh', value: ', oil painting style, Vincent van Gogh style, impasto, swirling brushstrokes' },
+];
+
+const examplePrompts = [
+  "Un gato astronauta flotando en el espacio, hiperdetallado.",
+  "Un bosque místico con hongos luminosos a medianoche.",
+  "Un samurái robot en una ciudad cyberpunk futurista.",
+  "Un retrato de una mujer con cabello de fuego, estilo óleo.",
+  "Un dragón de hielo sobre una montaña nevada, 8k."
+];
 
 export default function Home() {
   const [prompt, setPrompt] = useState('');
+  const [aspectRatio, setAspectRatio] = useState('1:1');
+  const [style, setStyle] = useState('');
   const [loading, setLoading] = useState(false);
-  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const handleGenerate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!prompt.trim()) return;
-
+  const generateImage = async () => {
     setLoading(true);
+    setGeneratedImage(null);
     setError(null);
-    setImageUrl(null);
+
+    // Combinar el prompt del usuario con el estilo seleccionado
+    const finalPrompt = prompt + style;
 
     try {
       const response = await fetch('/api/ai/replicate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt }),
+        body: JSON.stringify({ 
+          prompt: finalPrompt, 
+          aspect_ratio: aspectRatio // Enviamos el formato seleccionado
+        }),
       });
 
       const data = await response.json();
 
-      if (!response.ok) {
-        throw new Error(data.error || 'Error al procesar la solicitud');
+      if (data.error) {
+        throw new Error(data.error);
       }
 
-      // Replicate devuelve un arreglo de URLs o un string
-      const result = Array.isArray(data.output) ? data.output[0] : data.output;
-      setImageUrl(result);
+      setGeneratedImage(data.output[0]); // FLUX Schnell devuelve un array con la URL
     } catch (err: any) {
       setError(err.message || 'Ocurrió un error inesperado');
     } finally {
@@ -39,156 +66,159 @@ export default function Home() {
     }
   };
 
+  const handleSurpriseMe = () => {
+    const randomPrompt = examplePrompts[Math.floor(Math.random() * examplePrompts.length)];
+    setPrompt(randomPrompt);
+  };
+
   return (
-    <main style={styles.container}>
-      <header style={styles.header}>
-        <h1 style={styles.title}>🚀 Emmi_500 AI</h1>
-        <p style={styles.subtitle}>Transforma tus ideas en Imágenes y Video con Inteligencia Artificial</p>
+    <main className="flex min-h-screen flex-col items-center p-6 md:p-12 bg-gray-950 text-white">
+      {/* Header */}
+      <header className="w-full max-w-7xl flex items-center justify-between pb-8 border-b border-gray-800 mb-10">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-xl font-bold">E</div>
+          <h1 className="text-3xl font-bold tracking-tighter">Emmi_500 <span className="text-blue-500">AI</span></h1>
+        </div>
+        <p className="text-gray-400 text-sm hidden md:block">Transforma tus ideas en Imágenes con IA</p>
       </header>
 
-      <section style={styles.card}>
-        <form onSubmit={handleGenerate} style={styles.form}>
-          <label style={styles.label}>Escribe la descripción de tu imagen:</label>
-          <div style={styles.inputGroup}>
-            <input
-              type="text"
+      {/* Main Content */}
+      <div className="w-full max-w-3xl flex flex-col gap-8">
+        
+        {/* Panel de Control */}
+        <section className="bg-gray-900 p-6 rounded-2xl border border-gray-800 shadow-xl">
+          <label className="block text-lg font-medium mb-3 text-gray-200">Escribe la descripción de tu imagen:</label>
+          
+          {/* Input y Botón Sorpréndeme */}
+          <div className="relative mb-6">
+            <textarea
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
-              placeholder="Ej: Un astronauta montando un caballo en Marte, estilo cyber-punk..."
-              style={styles.input}
-              disabled={loading}
+              placeholder="Ej: Un astronauta montando un caballo en Marte..."
+              className="w-full p-4 pr-32 rounded-xl bg-gray-800 border border-gray-700 text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-h-[100px] resize-none"
             />
-            <button type="submit" disabled={loading || !prompt.trim()} style={styles.button}>
-              {loading ? '🎨 Generando...' : 'Generar Imagen'}
+            <button 
+              onClick={handleSurpriseMe}
+              className="absolute top-3 right-3 px-3 py-1.5 bg-gray-700 hover:bg-gray-600 rounded-lg text-xs font-medium text-gray-200 transition-colors"
+            >
+              ✨ Sorpréndeme
             </button>
           </div>
-        </form>
 
-        {error && <div style={styles.errorContainer}>❌ {error}</div>}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            {/* Selector de Formato */}
+            <div>
+              <label className="block text-sm font-medium mb-2 text-gray-300">1. Elige el Formato</label>
+              <div className="grid grid-cols-3 gap-2">
+                {aspectRatios.map((ratio) => (
+                  <button
+                    key={ratio.value}
+                    onClick={() => setAspectRatio(ratio.value)}
+                    className={`flex flex-col items-center justify-center p-3 rounded-lg border transition-all ${
+                      aspectRatio === ratio.value
+                        ? 'bg-blue-600/20 border-blue-500 text-blue-300'
+                        : 'bg-gray-800 border-gray-700 text-gray-400 hover:border-gray-500 hover:text-white'
+                    }`}
+                  >
+                    <span className="text-2xl mb-1">{ratio.icon}</span>
+                    <span className="text-xs font-medium">{ratio.name}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
 
-        {imageUrl && (
-          <div style={styles.resultContainer}>
-            <h3 style={styles.resultTitle}>✨ Tu Creación está lista:</h3>
-            <img src={imageUrl} alt="Resultado de IA" style={styles.image} />
-            <a href={imageUrl} target="_blank" download="emmi_500_ai.webp" style={styles.downloadBtn}>
-              ⬇️ Descargar Imagen
-            </a>
+            {/* Selector de Estilo */}
+            <div>
+              <label className="block text-sm font-medium mb-2 text-gray-300">2. Elige el Estilo</label>
+              <select 
+                value={style}
+                onChange={(e) => setStyle(e.target.value)}
+                className="w-full p-3 h-[74px] rounded-lg bg-gray-800 border border-gray-700 text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+              >
+                {styles.map((s) => (
+                  <option key={s.name} value={s.value}>{s.name}</option>
+                ))}
+              </select>
+            </div>
           </div>
-        )}
-      </section>
+
+          {/* Botón Generar */}
+          <button
+            onClick={generateImage}
+            disabled={loading || !prompt}
+            className={`w-full p-4 rounded-xl text-lg font-semibold transition-all ${
+              loading || !prompt
+                ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
+                : 'bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-600/20'
+            }`}
+          >
+            {loading ? (
+              <span className="flex items-center justify-center gap-2">
+                <span className="w-5 h-5 border-4 border-gray-300 border-t-white rounded-full animate-spin"></span>
+                Generando...
+              </span>
+            ) : (
+              '🚀 Generar Imagen'
+            )}
+          </button>
+        </section>
+
+        {/* Panel de Resultado */}
+        <section className="bg-gray-900 p-6 rounded-2xl border border-gray-800 shadow-xl min-h-[300px] flex flex-col items-center justify-center">
+          {loading && (
+            <div className="text-center text-gray-400 flex flex-col items-center gap-4">
+              <span className="w-12 h-12 border-4 border-gray-700 border-t-blue-500 rounded-full animate-spin"></span>
+              <p>Replicate está creando tu obra de arte...</p>
+            </div>
+          )}
+
+          {error && (
+            <div className="bg-red-900/30 border border-red-700 text-red-300 p-4 rounded-xl text-center w-full">
+              <p className="font-bold">🚨 Error</p>
+              <p className="text-sm">{error}</p>
+            </div>
+          )}
+
+          {!loading && !generatedImage && !error && (
+            <div className="text-center text-gray-500 border-2 border-dashed border-gray-700 rounded-xl p-10 w-full">
+              <p className="text-5xl mb-4">🖼️</p>
+              <p>Tu creación aparecerá aquí</p>
+              <p className="text-sm">Configura tu prompt arriba y dale a Generar.</p>
+            </div>
+          )}
+
+          {generatedImage && (
+            <div className="w-full flex flex-col items-center gap-4">
+              <h2 className="text-xl font-bold text-gray-100 flex items-center gap-2">
+                ✨ Tu Creación está lista:
+              </h2>
+              <div className="relative rounded-xl overflow-hidden border-4 border-gray-800 shadow-2xl bg-black flex items-center justify-center">
+                <Image
+                  src={generatedImage}
+                  alt={prompt}
+                  width={1024}
+                  height={1024}
+                  className="max-w-full h-auto object-contain"
+                  priority
+                />
+              </div>
+              <a 
+                href={generatedImage} 
+                target="_blank" 
+                download={`emmi500-${Date.now()}.webp`}
+                className="mt-2 px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-sm font-semibold text-white transition-colors flex items-center gap-2"
+              >
+                ⬇️ Descargar Imagen
+              </a>
+            </div>
+          )}
+        </section>
+
+      </div>
+
+      <footer className="w-full max-w-7xl mt-16 pt-8 border-t border-gray-800 text-center text-gray-600 text-sm">
+        Emmi_500 AI © {new Date().getFullYear()} - Todos los derechos reservados.
+      </footer>
     </main>
   );
 }
-
-const styles: { [key: string]: React.CSSProperties } = {
-  container: {
-    minHeight: '100vh',
-    backgroundColor: '#0f172a',
-    color: '#f8fafc',
-    fontFamily: 'system-ui, -apple-system, sans-serif',
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    padding: '3rem 1rem',
-  },
-  header: {
-    textAlign: 'center',
-    marginBottom: '2.5rem',
-  },
-  title: {
-    fontSize: '3rem',
-    fontWeight: '800',
-    margin: '0 0 0.5rem 0',
-    background: 'linear-gradient(to right, #38bdf8, #818cf8)',
-    WebkitBackgroundClip: 'text',
-    WebkitTextFillColor: 'transparent',
-  },
-  subtitle: {
-    fontSize: '1.1rem',
-    color: '#94a3b8',
-    margin: 0,
-  },
-  card: {
-    width: '100%',
-    maxWidth: '650px',
-    backgroundColor: '#1e293b',
-    borderRadius: '16px',
-    padding: '2rem',
-    boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.3)',
-    border: '1px solid #334155',
-  },
-  form: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '0.75rem',
-  },
-  label: {
-    fontSize: '0.95rem',
-    color: '#cbd5e1',
-    fontWeight: '500',
-  },
-  inputGroup: {
-    display: 'flex',
-    gap: '0.5rem',
-    flexWrap: 'wrap',
-  },
-  input: {
-    flex: '1',
-    minWidth: '240px',
-    padding: '0.85rem 1rem',
-    borderRadius: '8px',
-    border: '1px solid #475569',
-    backgroundColor: '#0f172a',
-    color: '#ffffff',
-    fontSize: '1rem',
-    outline: 'none',
-  },
-  button: {
-    padding: '0.85rem 1.5rem',
-    borderRadius: '8px',
-    border: 'none',
-    backgroundColor: '#3b82f6',
-    color: '#ffffff',
-    fontWeight: '600',
-    cursor: 'pointer',
-    transition: 'background-color 0.2s',
-  },
-  errorContainer: {
-    marginTop: '1.5rem',
-    padding: '1rem',
-    backgroundColor: '#450a0a',
-    border: '1px solid #991b1b',
-    borderRadius: '8px',
-    color: '#fca5a5',
-  },
-  resultContainer: {
-    marginTop: '2rem',
-    textAlign: 'center',
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    gap: '1rem',
-  },
-  resultTitle: {
-    fontSize: '1.2rem',
-    color: '#38bdf8',
-    margin: 0,
-  },
-  image: {
-    width: '100%',
-    maxHeight: '450px',
-    objectFit: 'contain',
-    borderRadius: '12px',
-    border: '1px solid #475569',
-  },
-  downloadBtn: {
-    display: 'inline-block',
-    padding: '0.6rem 1.2rem',
-    backgroundColor: '#10b981',
-    color: '#ffffff',
-    borderRadius: '6px',
-    textDecoration: 'none',
-    fontWeight: '600',
-    fontSize: '0.9rem',
-  },
-};
