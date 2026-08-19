@@ -4,7 +4,8 @@ import Replicate from 'replicate';
 export const dynamic = 'force-dynamic';
 
 const replicate = new Replicate({
-  auth: process.env.REPLICATE_API_TOKEN,
+  auth: r8_D6M************************************
+,
 });
 
 export async function POST(request: Request) {
