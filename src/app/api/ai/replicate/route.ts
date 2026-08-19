@@ -22,7 +22,7 @@ export async function POST(request: Request) {
 
     const ratioToUse = aspect_ratio || "1:1";
 
-    // 1. GPT-4o-mini traduce, interpreta emociones y detalla la raza exacta
+    // 1. Reescritura estricta con GPT-4o-mini
     let finalPrompt = prompt;
     try {
       const gptResponse = await openai.chat.completions.create({
@@ -30,30 +30,30 @@ export async function POST(request: Request) {
         messages: [
           {
             role: 'system',
-            content: `You are a world-class prompt engineer for AI image generators (FLUX Dev / DALL-E 3).
-Transform the user's short input into an explicit, highly detailed English prompt.
-RULES:
-1. Translate accurately from Spanish to English.
-2. Respect exact animal breeds (e.g., Pekingese must explicitly be described as a small fluffy Pekingese dog with flat face).
-3. Capture exact emotional tone (grief, agony, heartbreak, or transformation) without causing anatomical glitches.
-4. Output ONLY the final English prompt. No conversational text.`
+            content: `You are a cinematic prompt engineer for AI image generation (FLUX Dev).
+Transform the user input into an explicit English prompt following these STRICT VISUAL RULES:
+
+1. ABSENCE & DEATH: If the user mentions death, loss, or grief of a pet, DO NOT describe a living, conscious, or alert animal. Instead, explicitly describe a deceased pet lying completely motionless with eyes closed, or a grieving human weeping over a pet memorial, photo frame, or empty collar.
+2. BREEDS: Be hyper-specific with animal breeds (e.g., "Pekingese" must be explicitly described as a small, long-haired, flat-faced Pekingese).
+3. EMOTION & COMPOSITION: Detail cinematic lighting, dramatic human expressions (tears, agony, sorrow), and realistic textures.
+4. Output ONLY the final detailed English prompt. No introductions, explanations, or quotes.`
           },
           {
             role: 'user',
             content: prompt
           }
         ],
-        temperature: 0.4,
+        temperature: 0.3,
       });
 
       if (gptResponse.choices[0]?.message?.content) {
         finalPrompt = gptResponse.choices[0].message.content.trim();
       }
     } catch (e) {
-      console.warn("Falló GPT, usando fallback:", e);
+      console.warn("Falló GPT-4o-mini, usando fallback:", e);
     }
 
-    // 2. Renderizado en FLUX Dev
+    // 2. Renderizado con FLUX Dev
     const output: any = await replicate.run(
       "black-forest-labs/flux-dev",
       {
@@ -71,10 +71,10 @@ RULES:
     const imageUrl = Array.isArray(output) ? output[0] : output;
 
     if (!imageUrl) {
-      throw new Error("No se pudo obtener la imagen");
+      throw new Error("No se obtuvo la imagen");
     }
 
-    // 3. Conversión a Base64 para descarga local directa
+    // 3. Conversión a Base64
     const imageResponse = await fetch(imageUrl);
     const arrayBuffer = await imageResponse.arrayBuffer();
     const base64Image = Buffer.from(arrayBuffer).toString('base64');
