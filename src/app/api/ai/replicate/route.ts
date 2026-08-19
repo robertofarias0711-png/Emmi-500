@@ -22,35 +22,32 @@ export async function POST(request: Request) {
 
     const ratioToUse = aspect_ratio || "1:1";
 
-    // 1. Reescritura estricta con GPT-4o-mini
-    let finalPrompt = prompt;
+    // 1. Probar la llamada a GPT-4o-mini
+    let finalPrompt = '';
     try {
       const gptResponse = await openai.chat.completions.create({
         model: 'gpt-4o-mini',
         messages: [
           {
             role: 'system',
-            content: `You are a cinematic prompt engineer for AI image generation (FLUX Dev).
-Transform the user input into an explicit English prompt following these STRICT VISUAL RULES:
-
-1. ABSENCE & DEATH: If the user mentions death, loss, or grief of a pet, DO NOT describe a living, conscious, or alert animal. Instead, explicitly describe a deceased pet lying completely motionless with eyes closed, or a grieving human weeping over a pet memorial, photo frame, or empty collar.
-2. BREEDS: Be hyper-specific with animal breeds (e.g., "Pekingese" must be explicitly described as a small, long-haired, flat-faced Pekingese).
-3. EMOTION & COMPOSITION: Detail cinematic lighting, dramatic human expressions (tears, agony, sorrow), and realistic textures.
-4. Output ONLY the final detailed English prompt. No introductions, explanations, or quotes.`
+            content: `You are an expert prompt engineer for AI image generators.
+Convert the user request into an explicit, highly detailed English prompt.
+CRITICAL RULES:
+1. If the user mentions death/grief of a dog, DO NOT output a living dog. Describe a grieving man weeping, holding an empty collar, an urn, or a framed photo of a fluffy Pekingese dog.
+2. Ensure exact dog breeds (Pekingese: small, flat-faced, long fluffy fur).
+3. Output ONLY the English prompt string.`
           },
-          {
-            role: 'user',
-            content: prompt
-          }
+          { role: 'user', content: prompt }
         ],
-        temperature: 0.3,
+        temperature: 0.2,
       });
 
-      if (gptResponse.choices[0]?.message?.content) {
-        finalPrompt = gptResponse.choices[0].message.content.trim();
-      }
-    } catch (e) {
-      console.warn("Falló GPT-4o-mini, usando fallback:", e);
+      finalPrompt = gptResponse.choices[0]?.message?.content?.trim() || '';
+    } catch (openAiError: any) {
+      // Si falla OpenAI, devolvemos el error directo para corregirlo
+      return NextResponse.json({ 
+        error: `Error en OpenAI Key: ${openAiError.message || 'Revisa OPENAI_API_KEY en Netlify'}` 
+      }, { status: 500 });
     }
 
     // 2. Renderizado con FLUX Dev
@@ -70,11 +67,6 @@ Transform the user input into an explicit English prompt following these STRICT 
 
     const imageUrl = Array.isArray(output) ? output[0] : output;
 
-    if (!imageUrl) {
-      throw new Error("No se obtuvo la imagen");
-    }
-
-    // 3. Conversión a Base64
     const imageResponse = await fetch(imageUrl);
     const arrayBuffer = await imageResponse.arrayBuffer();
     const base64Image = Buffer.from(arrayBuffer).toString('base64');
@@ -83,9 +75,9 @@ Transform the user input into an explicit English prompt following these STRICT 
     return NextResponse.json({ output: [dataUrl] });
 
   } catch (error: any) {
-    console.error("Error en la API:", error);
+    console.error("Error general:", error);
     return NextResponse.json(
-      { error: error.message || 'Error al procesar la imagen' },
+      { error: error.message || 'Error en el servidor' },
       { status: 500 }
     );
   }
