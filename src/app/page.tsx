@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 
-
 const aspectRatios = [
   { name: 'Cuadrado (1:1)', value: '1:1', icon: '⏹️' },
   { name: 'Vertical (9:16)', value: '9:16', icon: '📱' },
@@ -39,7 +38,6 @@ export default function Home() {
     setGeneratedImage(null);
     setError(null);
 
-    // Combinar el prompt del usuario con el estilo seleccionado
     const finalPrompt = prompt + style;
 
     try {
@@ -48,7 +46,7 @@ export default function Home() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           prompt: finalPrompt, 
-          aspect_ratio: aspectRatio // Enviamos el formato seleccionado
+          aspect_ratio: aspectRatio
         }),
       });
 
@@ -58,7 +56,7 @@ export default function Home() {
         throw new Error(data.error);
       }
 
-      setGeneratedImage(data.output[0]); // FLUX Schnell devuelve un array con la URL
+      setGeneratedImage(data.output[0]);
     } catch (err: any) {
       setError(err.message || 'Ocurrió un error inesperado');
     } finally {
@@ -89,7 +87,6 @@ export default function Home() {
         <section className="bg-gray-900 p-6 rounded-2xl border border-gray-800 shadow-xl">
           <label className="block text-lg font-medium mb-3 text-gray-200">Escribe la descripción de tu imagen:</label>
           
-          {/* Input y Botón Sorpréndeme */}
           <div className="relative mb-6">
             <textarea
               value={prompt}
@@ -193,10 +190,10 @@ export default function Home() {
                 ✨ Tu Creación está lista:
               </h2>
               <div className="relative rounded-xl overflow-hidden border-4 border-gray-800 shadow-2xl bg-black flex items-center justify-center">
-                <<img
-                     src={generatedImage}
-                     alt={prompt}
-                     className="max-w-full h-auto object-contain rounded-lg"
+                <img
+                  src={generatedImage}
+                  alt={prompt}
+                  className="max-w-full h-auto object-contain rounded-lg"
                 />
               </div>
               <a 
