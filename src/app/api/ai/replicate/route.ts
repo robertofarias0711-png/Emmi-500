@@ -4,8 +4,7 @@ import Replicate from 'replicate';
 export const dynamic = 'force-dynamic';
 
 const replicate = new Replicate({
-  auth: r8_D6M************************************
-,
+  auth: process.env.REPLICATE_API_TOKEN,
 });
 
 export async function POST(request: Request) {
@@ -16,7 +15,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'El prompt es requerido' }, { status: 400 });
     }
 
-    // Ejecutamos el modelo de generación de imagen (FLUX Schnell por defecto)
     const output = await replicate.run(
       "black-forest-labs/flux-schnell",
       {
