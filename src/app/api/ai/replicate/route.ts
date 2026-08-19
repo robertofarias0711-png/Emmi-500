@@ -17,18 +17,23 @@ export async function POST(request: Request) {
 
     const ratioToUse = aspect_ratio || "1:1";
 
-    // 1. Convertir la idea en español a un prompt cinemático y detallado en inglés usando una IA de texto
+    // 1. System Prompt para forzar la correcta interpretación de duelo, ausencias y detalles exactos
     let expandedPrompt = prompt;
     try {
       const textOutput: any = await replicate.run(
         "meta/meta-llama-3-8b-instruct",
         {
           input: {
-            prompt: `You are an expert prompt engineer for AI image generation models (FLUX/Midjourney).
-Translate and enhance this user request into a highly descriptive, cinematic, detailed English prompt for image generation.
-Ensure emotional depth, accurate subject features, atmosphere, and lighting. Do NOT add conversation, only output the final enhanced prompt in English.
+            prompt: `You are an expert prompt engineer for FLUX AI. 
+Convert the user request into an explicit, highly detailed English image prompt.
 
-User request: "${prompt}"`,
+CRITICAL RULES:
+1. If the user mentions grief, loss, or a dead pet, DO NOT show a living, happy pet. Show the emotional human weeping, holding a pet memorial, an empty collar, a leash, or a photograph, capturing pure sorrow and heartbreak.
+2. Be extremely specific with dog breeds (e.g. Pekingese = small fluffy Pekingese dog features).
+3. Specify dramatic, moody lighting and realistic human expressions (tears, anguish, distress).
+4. Output ONLY the final English prompt string, no explanations.
+
+User Request: "${prompt}"`,
             max_new_tokens: 150
           }
         }
@@ -38,11 +43,11 @@ User request: "${prompt}"`,
         expandedPrompt = Array.isArray(textOutput) ? textOutput.join("").trim() : String(textOutput).trim();
       }
     } catch (e) {
-      console.warn("Falló la expansión de texto, usando fallback básico:", e);
-      expandedPrompt = `High quality, highly detailed image of: ${prompt}, cinematic lighting, photorealistic, 8k`;
+      console.warn("Falló Llama 3, usando fallback:", e);
+      expandedPrompt = `Cinematic photo of a man weeping in heartbreak over the loss of his Pekingese dog, holding an empty leash, dramatic sorrowful lighting, highly detailed emotional face, 8k`;
     }
 
-    // 2. Enviar el prompt perfecto a FLUX Schnell
+    // 2. Generar en FLUX
     const output: any = await replicate.run(
       "black-forest-labs/flux-schnell",
       {
@@ -60,10 +65,10 @@ User request: "${prompt}"`,
     const imageUrl = Array.isArray(output) ? output[0] : output;
 
     if (!imageUrl) {
-      throw new Error("No se obtuvo URL de imagen desde Replicate");
+      throw new Error("No se obtuvo imagen");
     }
 
-    // 3. Convertir a Base64 para garantizar la descarga limpia
+    // 3. Convertir a Base64 para la descarga
     const imageResponse = await fetch(imageUrl);
     const arrayBuffer = await imageResponse.arrayBuffer();
     const base64Image = Buffer.from(arrayBuffer).toString('base64');
@@ -73,9 +78,8 @@ User request: "${prompt}"`,
 
   } catch (error: any) {
     console.error("Error en Replicate API:", error);
-
     return NextResponse.json(
-      { error: error.message || 'Ocurrió un error al procesar la imagen' },
+      { error: error.message || 'Error al generar la imagen' },
       { status: 500 }
     );
   }
